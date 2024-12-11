@@ -23,9 +23,10 @@ func Create(recentSlot uint64, authority, payer solana.PublicKey) (*solana.Gener
 		return nil, solana.PublicKey{}, err
 	}
 
-	data := []byte{0}
-	data = append(data, recentSlotBytes...)
-	data = append(data, seed)
+	data := make([]byte, 13)
+	binary.LittleEndian.PutUint32(data[0:4], 0)
+	binary.LittleEndian.PutUint64(data[4:12], recentSlot)
+	data[12] = seed
 
 	keys := []*solana.AccountMeta{
 		{PublicKey: address, IsSigner: false, IsWritable: true},
@@ -42,10 +43,13 @@ func Create(recentSlot uint64, authority, payer solana.PublicKey) (*solana.Gener
 }
 
 func Extend(tableAddress, authority solana.PublicKey, payer *solana.PublicKey, addresses []solana.PublicKey) (*solana.GenericInstruction, error) {
-	data := []byte{2}
-	data = append(data, toBufferLittleEndian(uint64(len(addresses)))...)
-	for _, address := range addresses {
-		data = append(data, address.Bytes()...)
+	data := make([]byte, 12+(32*len(addresses)))
+
+	binary.LittleEndian.PutUint32(data[0:4], 2)
+	binary.LittleEndian.PutUint64(data[4:12], uint64(len(addresses)))
+
+	for i, addr := range addresses {
+		copy(data[12+(i*32):12+((i+1)*32)], addr.Bytes())
 	}
 
 	keys := []*solana.AccountMeta{
@@ -67,7 +71,8 @@ func Extend(tableAddress, authority solana.PublicKey, payer *solana.PublicKey, a
 }
 
 func Close(tableAddress, authority, recipient solana.PublicKey) (*solana.GenericInstruction, error) {
-	data := []byte{4}
+	data := make([]byte, 4)
+	binary.LittleEndian.PutUint32(data[0:4], 4)
 
 	keys := []*solana.AccountMeta{
 		{PublicKey: tableAddress, IsSigner: false, IsWritable: true},
@@ -83,7 +88,8 @@ func Close(tableAddress, authority, recipient solana.PublicKey) (*solana.Generic
 }
 
 func Freeze(tableAddress, authority solana.PublicKey) (*solana.GenericInstruction, error) {
-	data := []byte{1}
+	data := make([]byte, 4)
+	binary.LittleEndian.PutUint32(data[0:4], 1)
 
 	keys := []*solana.AccountMeta{
 		{PublicKey: tableAddress, IsSigner: false, IsWritable: true},
@@ -98,7 +104,8 @@ func Freeze(tableAddress, authority solana.PublicKey) (*solana.GenericInstructio
 }
 
 func Deactivate(tableAddress, authority solana.PublicKey) (*solana.GenericInstruction, error) {
-	data := []byte{3}
+	data := make([]byte, 4)
+	binary.LittleEndian.PutUint32(data[0:4], 3)
 
 	keys := []*solana.AccountMeta{
 		{PublicKey: tableAddress, IsSigner: false, IsWritable: true},
